@@ -25,43 +25,33 @@ export const refPromise = <T>(promise: Promise<T> | (() => T)): Ref<T> => {
 }
 
 
-export const asyncRef = <T>(promiseOrFunction: Promise<T> | (() => T), defaultValue: T | undefined = undefined, cache?: string): Ref<T> => {
-    let data = ref<T | any>(JSON.parse(localStorage.getItem(cache)) || defaultValue);
-
-    // 如果参数是 Promise，则执行并将结果赋值给 Ref
-    if (promiseOrFunction instanceof Promise) {
-        promiseOrFunction.then((result) => {
-            data.value = result;
-            cache && localStorage.setItem(cache, JSON.stringify(data.value))
-
-        }).catch((error) => {
-            console.error('Error occurred:', error);
-            cache && localStorage.removeItem(cache)
-            return defaultValue
-        });
-    }
-
-    // 如果参数是 Function，则执行并将结果赋值给 Ref
-    if (typeof promiseOrFunction === 'function') {
-        const result = promiseOrFunction();
-        // 判断结果是否是 Promise
-        if (result instanceof Promise) {
-            result.then((value) => {
-                data.value = value;
-                cache && localStorage.setItem(cache, JSON.stringify(data.value))
-            }).catch((error) => {
-                console.error('Error occurred:', error);
-                cache && localStorage.removeItem(cache)
-                return defaultValue
-            });
-        } else {
-            // 如果不是 Promise，则直接赋值给 Ref
-            data.value = result;
+type AsyncRefReturnType<T> = Ref<T>&{
+  load: () => {},
+}
+export const asyncRef = <T>(loadFn: () => T, defaultValue: T | undefined = undefined, cache?: string): AsyncRefReturnType<T> => {
+    const cachedValue = cache ? JSON.parse(localStorage.getItem(cache) as string) : undefined;
+    const data = ref<T>(cachedValue ?? defaultValue) as AsyncRefReturnType<T>;
+  
+    data.load = async () => {
+      try {
+        const result = await loadFn();
+        data.value = result;
+        if (cache) {
+          localStorage.setItem(cache, JSON.stringify(result));
         }
+      } catch (error) {
+        console.error('Error occurred during data loading:', error);
+        if (cache) {
+          localStorage.removeItem(cache);
+        }
+      }
     }
-
+  
+    data.load()
+ 
     return data;
 }
+
 
 
 export const asyncCtlRef = <T>(
