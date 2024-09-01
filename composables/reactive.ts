@@ -54,6 +54,7 @@ export const asyncRef = <T>(loadFn: () => T, defaultValue: T | undefined = undef
     
   
     data.load()
+    data.loading = loading
  
     return data;
 }
