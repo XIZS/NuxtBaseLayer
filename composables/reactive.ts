@@ -31,8 +31,11 @@ type AsyncRefReturnType<T> = Ref<T>&{
 export const asyncRef = <T>(loadFn: () => T, defaultValue: T | undefined = undefined, cache?: string): AsyncRefReturnType<T> => {
     const cachedValue = cache ? JSON.parse(localStorage.getItem(cache) as string) : undefined;
     const data = ref<T>(cachedValue ?? defaultValue) as AsyncRefReturnType<T>;
+    const loading = ref(false)
   
     data.load = async () => {
+      if(loading.value) return 
+      loading.value = true
       try {
         const result = await loadFn();
         data.value = result;
@@ -44,8 +47,11 @@ export const asyncRef = <T>(loadFn: () => T, defaultValue: T | undefined = undef
         if (cache) {
           localStorage.removeItem(cache);
         }
+      } finally {
+        loading.value = false
       }
     }
+    
   
     data.load()
  
